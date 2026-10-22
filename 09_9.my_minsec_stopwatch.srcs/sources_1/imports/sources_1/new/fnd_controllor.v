@@ -30,12 +30,13 @@ endmodule
 // 빙빙 돌아가는
 module fnd_ani_display(input clk, reset, output reg [3:0]an, reg [7:0]seg);
     reg [26:0]r_10ns_counter = 0; reg [3:0]r_1ms_counter = 0;
+    parameter NS_LIMIT = 100_000_0;
     always@(posedge clk or posedge reset) begin
         if(reset) begin
             r_10ns_counter <= 0; r_1ms_counter <= 0;
         end
         else begin
-            if(r_10ns_counter == 20'd1_000_000 - 1) begin
+            if(r_10ns_counter == NS_LIMIT - 1) begin
                 r_10ns_counter <= 0; r_1ms_counter <= r_1ms_counter + 1;
                 if(r_1ms_counter == 12) r_1ms_counter <= 0; 
             end else begin
