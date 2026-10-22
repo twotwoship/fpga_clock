@@ -1,13 +1,18 @@
 `timescale 1ns / 1ps
-module fnd_controllor(input clk, reset, tick, mode_sel, [23:0]in_data, output [3:0]an, [7:0]seg);
+module fnd_controllor(input clk, reset, tick, mode_sel, mode2_sel, [23:0]in_data, output [3:0]an, [7:0]seg);
     wire [1:0] w_sel;
     fnd_digit_select u_fnd_digit_select(.clk(clk), .reset(reset), .tick(tick), .sel(w_sel));
     wire [3:0]w_d1, w_d10, w_d100, w_d1000;
     wire [3:0]w_sw_d1, w_sw_d10, w_sw_d100, w_sw_d1000;
     wire [3:0]w_c_d1, w_c_d10, w_c_d100, w_c_d1000;
 
-    //mode_sel 이 0일때  u_clock_bin2bcd4_digit 실행
-    //mode_sel 이 1일때 u_bin2bcd4_digit 실행
+    wire [3:0] w_di_an; wire [7:0] w_di_seg;
+    wire [3:0] w_ani_an; wire [7:0] w_ani_seg;
+
+    //자 모드 투 만들었어 메인에서 스탑일때 5초 지나면 모드투를 1로 만들어가지고 신호를 보내주면 여기 최종 아웃풋 에서 먹스 선택해서 뽑게 하는거임.
+    // 기존라인 신경전혀안쓰게 // mode2_sel 에서 0이면 스탑와치 1이면  스탑와치 스톱 5초지남
+    //mode_sel 이 0일때  u_clock_bin2bcd4_digit 실행 0일 때 시계인거고
+    //mode_sel 이 1일때 u_bin2bcd4_digit 실행 1일 때 스톱워치인거임
     // 1초마다 on off되게 d100의 점을 껏다 ㅕㅋㅆ다햐애됨
     bin2bcd4_digit u_bin2bcd4_digit(.in_data(in_data), .d1(w_sw_d1), .d10(w_sw_d10), .d100(w_sw_d100), .d1000(w_sw_d1000));
     clock_bin2bcd4_digit u_clock_bin2bcd4_digit(.in_data(in_data), .d1(w_c_d1), .d10(w_c_d10), .d100(w_c_d100), .d1000(w_c_d1000));
@@ -15,7 +20,49 @@ module fnd_controllor(input clk, reset, tick, mode_sel, [23:0]in_data, output [3
     assign w_d10 = mode_sel ? w_sw_d10 : w_c_d10;
     assign w_d100 = mode_sel ? w_sw_d100 : w_c_d100;
     assign w_d1000 = mode_sel ? w_sw_d1000 : w_c_d1000;
-    fnd_digit_display u_fnd_digit_display(.clk(clk), .reset(reset), .sel(w_sel), .d1(w_d1), .d10(w_d10), .d100(w_d100), .d1000(w_d1000), .an(an), .seg(seg));
+    fnd_digit_display u_fnd_digit_display(.clk(clk), .reset(reset), .mode_sel(mode_sel),.mode2_sel(mode2_sel), .sel(w_sel), 
+                                            .d1(w_d1), .d10(w_d10), .d100(w_d100), .d1000(w_d1000), .an(w_di_an), .seg(w_di_seg));
+    fnd_ani_display u_fnd_ani_display(.clk(clk), .reset(reset), .an(w_ani_an), .seg(w_ani_seg));
+    assign an = mode2_sel ? w_ani_an : w_di_an;
+    assign seg = mode2_sel ? w_ani_seg : w_di_seg;
+endmodule
+
+// 빙빙 돌아가는
+module fnd_ani_display(input clk, reset, output reg [3:0]an, reg [7:0]seg);
+    reg [26:0]r_10ns_counter = 0; reg [3:0]r_1ms_counter = 0;
+    always@(posedge clk or posedge reset) begin
+        if(reset) begin
+            r_10ns_counter <= 0; r_1ms_counter <= 0;
+        end
+        else begin
+            if(r_10ns_counter == 20'd1_000_000 - 1) begin
+                r_10ns_counter <= 0; r_1ms_counter <= r_1ms_counter + 1;
+                if(r_1ms_counter == 12) r_1ms_counter <= 0; 
+            end else begin
+                r_10ns_counter <= r_10ns_counter + 1;
+            end
+        end
+    end
+    // 타임 an 하고 seg는 구분되어야한다 r_1ms_counter가 바뀔때마다 an은 한칸씩 옆으로 이동되어야 하며 아닌가? 안키면 되는거아닐까?
+    // 모두가 다 출력이 들어가지만 특정상황일때 특정만 켜지는거지 아닌가? 돌아가게 만들어야함.
+    // 일단 제일 위 껍데기는 이게 맞다 1ms 마다 바뀌어야하니까 1ms가 바뀔때마다 값이 정해져야됨
+    always@(r_1ms_counter) begin
+        case(r_1ms_counter)
+            4'd0: begin seg = 8'b11111110; an = 4'b1110; end 
+            4'd1: begin seg = 8'b11111110; an = 4'b1101; end 
+            4'd2: begin seg = 8'b11111110; an = 4'b1011; end 
+            4'd3: begin seg = 8'b11111110; an = 4'b0111; end 
+            4'd4: begin seg = 8'b11011111; an = 4'b0111; end 
+            4'd5: begin seg = 8'b11101111; an = 4'b0111; end 
+            4'd6: begin seg = 8'b11110111; an = 4'b0111; end 
+            4'd7: begin seg = 8'b11110111; an = 4'b1011; end 
+            4'd8: begin seg = 8'b11110111; an = 4'b1101; end 
+            4'd9: begin seg = 8'b11110111; an = 4'b1110; end 
+            4'd10: begin seg = 8'b11111011; an = 4'b1110; end 
+            4'd11: begin seg = 8'b11111101; an = 4'b1110; end 
+            default: begin seg = 8'b11111111; an = 4'b1111; end  // 아니면 꺼져있기
+        endcase
+    end
 endmodule
 
 // logic select 1_digit displaying fnd every 1ms, 
@@ -38,7 +85,7 @@ module clock_bin2bcd4_digit(input [23:0] in_data, output [3:0]d1, [3:0]d10, [3:0
     assign d100 = ((in_data / 100) / 60) % 10;     assign d1000 = ((in_data / 100) / 60) / 10;
 endmodule
 
-module fnd_digit_display(input clk, reset, input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d1000, output reg [3:0]an, reg [7:0]seg);
+module fnd_digit_display(input clk, reset, mode_sel, mode2_sel, input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d1000, output reg [3:0]an, reg [7:0]seg);
     reg [3:0] bcd_data;
     reg [26:0]r_10ns_counter; reg r_1s_t = 0;
     always@(posedge clk or posedge reset) begin
@@ -74,8 +121,10 @@ module fnd_digit_display(input clk, reset, input [1:0]sel, [3:0]d1, [3:0]d10, [3
         default: seg = 8'b11111111;
     endcase
 
-    if(sel == 2'b10 && r_1s_t)
-        seg[7] = 1'b0;     // 점 켜
+    if(sel == 2'b10 && r_1s_t && ~mode_sel)
+        seg[7] = 1'b0;     // 시계모드일때는 1초마다 번갈아 점 켜
+    if(sel == 2'b10 && ~mode2_sel)
+        seg[7] = 1'b0;     // 스탑와치일땐 항상 켜점 켜    
 end
 endmodule
 
