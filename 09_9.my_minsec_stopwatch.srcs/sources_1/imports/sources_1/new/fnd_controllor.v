@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 module fnd_controllor(input clk, reset, tick, mode_sel, mode2_sel, [23:0]in_data, output [3:0]an, [7:0]seg);
+    parameter NS_LIMIT = 100_000_0;
     wire [1:0] w_sel;
     fnd_digit_select u_fnd_digit_select(.clk(clk), .reset(reset), .tick(tick), .sel(w_sel));
     wire [3:0]w_d1, w_d10, w_d100, w_d1000;
@@ -20,9 +21,9 @@ module fnd_controllor(input clk, reset, tick, mode_sel, mode2_sel, [23:0]in_data
     assign w_d10 = mode_sel ? w_sw_d10 : w_c_d10;
     assign w_d100 = mode_sel ? w_sw_d100 : w_c_d100;
     assign w_d1000 = mode_sel ? w_sw_d1000 : w_c_d1000;
-    fnd_digit_display u_fnd_digit_display(.clk(clk), .reset(reset), .mode_sel(mode_sel),.mode2_sel(mode2_sel), .sel(w_sel), 
+    fnd_digit_display #(.NS_LIMIT(NS_LIMIT))u_fnd_digit_display(.clk(clk), .reset(reset), .mode_sel(mode_sel),.mode2_sel(mode2_sel), .sel(w_sel), 
                                             .d1(w_d1), .d10(w_d10), .d100(w_d100), .d1000(w_d1000), .an(w_di_an), .seg(w_di_seg));
-    fnd_ani_display u_fnd_ani_display(.clk(clk), .reset(reset), .an(w_ani_an), .seg(w_ani_seg));
+    fnd_ani_display #(.NS_LIMIT(NS_LIMIT))u_fnd_ani_display(.clk(clk), .reset(reset), .an(w_ani_an), .seg(w_ani_seg));
     assign an = mode2_sel ? w_ani_an : w_di_an;
     assign seg = mode2_sel ? w_ani_seg : w_di_seg;
 endmodule
@@ -87,12 +88,13 @@ module clock_bin2bcd4_digit(input [23:0] in_data, output [3:0]d1, [3:0]d10, [3:0
 endmodule
 
 module fnd_digit_display(input clk, reset, mode_sel, mode2_sel, input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d1000, output reg [3:0]an, reg [7:0]seg);
+    parameter NS_LIMIT = 100_000_0;
     reg [3:0] bcd_data;
     reg [26:0]r_10ns_counter; reg r_1s_t = 0;
     always@(posedge clk or posedge reset) begin
         if(reset) begin r_10ns_counter <= 0; r_1s_t <= 0; end
         else begin
-            if(r_10ns_counter == 27'd1_000_000_00 - 1) begin
+            if(r_10ns_counter == (NS_LIMIT * 100) - 1) begin
                 r_10ns_counter <= 0; r_1s_t <= ~r_1s_t;
             end else r_10ns_counter <= r_10ns_counter + 1;
         end

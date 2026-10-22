@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module main_fsm(input clk, reset, [2:0]btn, [7:0]sw, output [23:0]seg, output mode_sel, mode2_sel);
+module main_fsm(input clk, reset, [2:0]btn, output [23:0]seg, output mode_sel, mode2_sel);
     /* 시계, 스톱워치, 정지, 리셋
     시계는 따로 스톱워치도 따로. 추가 구현사항 스탑모드에서 3초가 지나면 돌아가는 애니메이션이 나와야됨
     그러면 수정해야될 사항이 나가는 모드가 추가되어야 할까?'
