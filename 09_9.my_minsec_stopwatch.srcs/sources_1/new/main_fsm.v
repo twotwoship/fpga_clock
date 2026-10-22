@@ -1,8 +1,10 @@
 `timescale 1ns / 1ps
 module main_fsm(input clk, reset, [2:0]btn, [7:0]sw, output [23:0]seg, output mode_sel);
     /* 시계, 스톱워치, 정지, 리셋
-    시계는 따로 스톱워치도 따로. 추가 구현사항 스탑모드에서 5초가 지나면 애니메이션이 나와야됨
-    그러면 수정해야될 사항이
+    시계는 따로 스톱워치도 따로. 추가 구현사항 스탑모드에서 3초가 지나면 돌아가는 애니메이션이 나와야됨
+    그러면 수정해야될 사항이 나가는 모드가 추가되어야 할까?'
+    시계 돌아갈때는 .이 생겨야됨 이거함
+    
     */
     parameter CLOCK = 2'b00; parameter STOPWATCH = 2'b01; parameter STOP = 2'b10; parameter RESET = 2'b11;
     parameter NONE = 3'b000; parameter btnL = 3'b001; parameter btnC = 3'b010; parameter btnR = 3'b100;

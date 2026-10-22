@@ -8,13 +8,14 @@ module fnd_controllor(input clk, reset, tick, mode_sel, [23:0]in_data, output [3
 
     //mode_sel 이 0일때  u_clock_bin2bcd4_digit 실행
     //mode_sel 이 1일때 u_bin2bcd4_digit 실행
+    // 1초마다 on off되게 d100의 점을 껏다 ㅕㅋㅆ다햐애됨
     bin2bcd4_digit u_bin2bcd4_digit(.in_data(in_data), .d1(w_sw_d1), .d10(w_sw_d10), .d100(w_sw_d100), .d1000(w_sw_d1000));
     clock_bin2bcd4_digit u_clock_bin2bcd4_digit(.in_data(in_data), .d1(w_c_d1), .d10(w_c_d10), .d100(w_c_d100), .d1000(w_c_d1000));
     assign w_d1 = mode_sel ? w_sw_d1 : w_c_d1;
     assign w_d10 = mode_sel ? w_sw_d10 : w_c_d10;
     assign w_d100 = mode_sel ? w_sw_d100 : w_c_d100;
     assign w_d1000 = mode_sel ? w_sw_d1000 : w_c_d1000;
-    fnd_digit_display u_fnd_digit_display(.sel(w_sel), .d1(w_d1), .d10(w_d10), .d100(w_d100), .d1000(w_d1000), .an(an), .seg(seg));
+    fnd_digit_display u_fnd_digit_display(.clk(clk), .reset(reset), .sel(w_sel), .d1(w_d1), .d10(w_d10), .d100(w_d100), .d1000(w_d1000), .an(an), .seg(seg));
 endmodule
 
 // logic select 1_digit displaying fnd every 1ms, 
@@ -37,8 +38,18 @@ module clock_bin2bcd4_digit(input [23:0] in_data, output [3:0]d1, [3:0]d10, [3:0
     assign d100 = ((in_data / 100) / 60) % 10;     assign d1000 = ((in_data / 100) / 60) / 10;
 endmodule
 
-module fnd_digit_display(input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d1000, output reg [3:0]an, reg [7:0]seg);
+module fnd_digit_display(input clk, reset, input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d1000, output reg [3:0]an, reg [7:0]seg);
     reg [3:0] bcd_data;
+    reg [26:0]r_10ns_counter; reg r_1s_t = 0;
+    always@(posedge clk or posedge reset) begin
+        if(reset) begin r_10ns_counter <= 0; r_1s_t <= 0; end
+        else begin
+            if(r_10ns_counter == 27'd1_000_000_00 - 1) begin
+                r_10ns_counter <= 0; r_1s_t <= ~r_1s_t;
+            end else r_10ns_counter <= r_10ns_counter + 1;
+        end
+    end
+    // 지금 구조가 넘어온 d값에 따라 아웃 seg가 결정됨  b
     always@(sel) begin
         case(sel)
             2'b00: begin bcd_data = d1;     an = 4'b1110; end
@@ -48,20 +59,23 @@ module fnd_digit_display(input [1:0]sel, [3:0]d1, [3:0]d10, [3:0]d100, [3:0]d100
             default: begin bcd_data = 4'b0000; an = 4'b1111; end
         endcase
     end
-    always @(bcd_data) begin
-        case(bcd_data)
-            4'd0: seg = 8'b11000000;   // 0
-            4'd1: seg = 8'b11111001;   // 1
-            4'd2: seg = 8'b10100100;   // 2
-            4'd3: seg = 8'b10110000;   // 3
-            4'd4: seg = 8'b10011001;   // 4
-            4'd5: seg = 8'b10010010;   // 5
-            4'd6: seg = 8'b10000010;   // 6
-            4'd7: seg = 8'b11111000;   // 7
-            4'd8: seg = 8'b10000000;   // 8
-            4'd9: seg = 8'b10010000;   // 9
-            default: seg = 8'b11111111;  // all off  
-        endcase 
-    end 
+    always @(*) begin
+    case(bcd_data)
+        4'd0: seg = 8'b11000000;
+        4'd1: seg = 8'b11111001;
+        4'd2: seg = 8'b10100100;
+        4'd3: seg = 8'b10110000;
+        4'd4: seg = 8'b10011001;
+        4'd5: seg = 8'b10010010;
+        4'd6: seg = 8'b10000010;
+        4'd7: seg = 8'b11111000;
+        4'd8: seg = 8'b10000000;
+        4'd9: seg = 8'b10010000;
+        default: seg = 8'b11111111;
+    endcase
+
+    if(sel == 2'b10 && r_1s_t)
+        seg[7] = 1'b0;     // 점 켜
+end
 endmodule
 
