@@ -123,8 +123,8 @@ module fnd_digit_display(input clk, reset, mode_sel, mode2_sel, input [1:0]sel, 
 
     if(sel == 2'b10 && r_1s_t && ~mode_sel)
         seg[7] = 1'b0;     // 시계모드일때는 1초마다 번갈아 점 켜
-    if(sel == 2'b10 && ~mode2_sel)
-        seg[7] = 1'b0;     // 스탑와치일땐 항상 켜점 켜    
+    if(sel == 2'b10 && mode_sel && ~mode2_sel)
+        seg[7] = 1'b0;     //스탑와치 돌아갈때는 계속 점 켜놔
 end
 endmodule
 
